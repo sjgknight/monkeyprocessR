@@ -1,0 +1,153 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup}
+pacman::p_load(dplyr,magrittr,tidyr,ggplot2, purrr)
+
+source('tidysheets.R')
+
+table_raw<- readxl::read_excel("Survey71_singlesheet.xlsx",
+                               skip = 1,
+                               col_names = FALSE,
+                               col_types = "text")
+
+```
+
+```{r process}
+
+display_table_shape(table_raw)
+
+# Get the tables roughly
+split_table <- table_raw %>%
+    split_df(complexity = 2) 
+
+# Extract the tables broadly in a good format
+q_tables <- extract_tables(split_table)
+
+# Convert the tables to a wide tidy format
+likert_wide <- map2(
+    .x = q_tables[c(4:12)],
+    .y = names(q_tables[c(4:12)]),
+    .f = likert_that
+  )
+
+
+likert_combined <- do.call(rbind,likert_wide)
+  
+likert_long <- likert_combined %>%
+  select(c(q:responses_strongly_agree)) %>%
+  tidyr::gather(data, group, responses_strongly_disagree:responses_strongly_agree) %>%
+  arrange(factor(q, levels = c("responses_strongly_disagree", "responses_disagree", "responses_neither_agree_nor_disagree", "responses_agree", "responses_strongly_agree"))) %>% 
+  mutate(q=factor(q, levels=unique(q)))
+
+
+```
+
+```{r plot}
+
+pacman::p_load(HH)
+
+
+data_sum <- likert_combined %>%
+  dplyr::rename(Item = q) %>%
+    dplyr::select(Item:responses_strongly_agree) %>%
+    mutate(across(c(-Item), ~as.numeric(.x)*100)) %>%
+  dplyr::rename("Strongly Disagree" = responses_strongly_disagree,
+                "Disagree" = responses_disagree,
+                "Neither agree nor disagree" = responses_neither_agree_nor_disagree, 
+                "Agree" = responses_agree,
+                "Strongly Agree" = responses_strongly_agree)
+  
+data_sum <- data_sum %>%
+  rowwise() %>%
+  mutate(Item_orig = Item,
+         Item = stringr::str_wrap(Item_orig, width = 60))
+
+
+data_sum <- data_sum %>%
+  mutate(Item = factor(Item, levels = c(Item)))
+
+x <- HH::likertplot(data_sum[2:6], 
+               horizontal=TRUE,
+               main="NTEU member feedback",
+               sub= list("n=63 responses q.3-8, and n=62 q.9-12",
+                         cex = .4,
+                         col = "blue"),
+               xlab = list("%",
+                           cex = .4),
+               #ylab = "Q",
+               
+               par.strip.text=list(cex=.4, lines=5, rotate=30),
+               auto.key=list(space="right", 
+                             columns=1,
+                             cex = .5), 
+               #padding.text=2),
+               strip = FALSE,
+               add.text = T,
+               xlim = c(-100,100),
+               scales = list(x = list(rot = 45,
+                                      cex = .6,
+                                      at=seq(-90,90,10)),
+                             y = list(cex = .6,
+                                      labels = rev(c(data_sum$Item))))
+)
+
+
+
+
+```
+
+
+
+
+```{r junk}
+
+
+#pacman::p_load_gh("church-army/monkeyreadr")
+#readxl::read_xlsx but tidy
+#surveymonkey <- monkeyreadr::read_sm('Survey71_singlesheet.csv', clean_names = F, drop_surplus_cols = F)
+#surveymonkey <- vroom::vroom('Survey71_singlesheet.csv',delim = ",")
+# Read the CSV file
+data <- read_csv('Survey71_singlesheet.csv', col_names = FALSE)
+
+# Add column names for easier handling
+names(data) <- c("Answer_Choices", "Percentage", "Count")
+
+# Replace NA with empty strings to avoid issues
+data[is.na(data)] <- ""
+
+# Find the indices of the questions
+question_indices <- which(grepl("^Q[0-9]+\\.", data$Answer_Choices))
+
+# Define a function to process each question block
+process_question_block <- function(start, end, data) {
+  question_data <- data[start:end, ]
+  question_text <- question_data$Answer_Choices[1]
+  
+  # Extract responses and clean up the data
+  responses <- question_data %>%
+    dplyr::filter(!grepl("Answered|Skipped", Answer_Choices)) %>%
+    mutate(Question = question_text) %>%
+    separate(Percentage, into = c("Percentage", "Count"), sep = "\\s", convert = TRUE) %>%
+    mutate(Percentage = as.numeric(gsub("%", "", Percentage)))
+  
+  return(responses)
+}
+
+# Apply the function to each question block
+tidy_data <- map2_dfr(
+  question_indices, 
+  c(question_indices[-1] - 1, nrow(data)), 
+  ~ process_question_block(.x, .y, data)
+)
+
+# View the tidy data
+print(tidy_data)
+
+
+```
+
