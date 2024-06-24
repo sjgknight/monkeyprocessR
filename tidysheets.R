@@ -228,7 +228,29 @@ likert_that <- function(likert_qs, likert_name){
   response_data <- response_data %>%
     mutate(Q = likert_name) %>%
     dplyr::relocate(Q) %>%
+    rename(question = Q) %>%
     janitor::clean_names()
 
   response_data
+}
+
+
+#q unfortunately is also the base quit function so we'll backtick enclose it
+get_n_sizes <- function(likert_combined){
+  likert_combined %>%
+  # Extract the unique question labels
+  mutate(question = stringr::str_split_i(string = question, pattern = ". ", i = 1)) %>%
+  # Group by the number of respondents
+  group_by(answered) %>%
+  # Summarize the questions with the same number of respondents
+  summarise(
+    question = paste(question, collapse = ", "),
+    .groups = 'drop'
+  ) %>%
+  # Create a summary sentence
+  mutate(summary = paste0(question, " have ", answered, " respondents")) %>%
+  # Select the summary column
+  pull(summary) %>%
+  # Collapse into a single string with "; " as separator
+  paste0(collapse = "; ")
 }

@@ -1,9 +1,18 @@
----
-title: "R Notebook"
-output: html_notebook
-editor_options: 
-  chunk_output_type: inline
----
+A set of scripts, with heavy support from stackoverflow and chatgpt, to process likert-style questions from surveymonkey into attractive stacked bar.
+
+There are various packages for likert items, but many assume you have the raw data, and would require extracting unexported functions and some rewriting to process pre-summarised data.
+
+
+#### chatGPT shiny request
+
+Can you convert these Rmd chunks into a basic Shiny app with the following interactive elements:
+1. takes as input an xlsx file which is processed using split_df function and extract_tables
+2. displays the extract_tables output, and allows the user to input which tables from the q_tables list should be processed by likert_that 
+3. once '2' input is set, a button to run likert_that and rbind, to obtain likert_combined
+4. buttons to allow the user to download likert_combined and likert_long
+5. some input boxes to set the HH features including 'main', cex, col
+6. using the input in 5, a button to run HH::likertplot and display the output (with option to download in png or svg format)
+
 
 ```{r setup}
 pacman::p_load(dplyr,magrittr,tidyr,ggplot2, purrr)
@@ -98,57 +107,4 @@ x <- HH::likertplot(data_sum[2:6],
                                       labels = rev(c(data_sum$Item))))
 )
 
-
-
 ```
-
-
-
-
-```{r junk}
-
-
-#pacman::p_load_gh("church-army/monkeyreadr")
-#readxl::read_xlsx but tidy
-#surveymonkey <- monkeyreadr::read_sm('Survey71_singlesheet.csv', clean_names = F, drop_surplus_cols = F)
-#surveymonkey <- vroom::vroom('Survey71_singlesheet.csv',delim = ",")
-# Read the CSV file
-data <- read_csv('Survey71_singlesheet.csv', col_names = FALSE)
-
-# Add column names for easier handling
-names(data) <- c("Answer_Choices", "Percentage", "Count")
-
-# Replace NA with empty strings to avoid issues
-data[is.na(data)] <- ""
-
-# Find the indices of the questions
-question_indices <- which(grepl("^Q[0-9]+\\.", data$Answer_Choices))
-
-# Define a function to process each question block
-process_question_block <- function(start, end, data) {
-  question_data <- data[start:end, ]
-  question_text <- question_data$Answer_Choices[1]
-  
-  # Extract responses and clean up the data
-  responses <- question_data %>%
-    dplyr::filter(!grepl("Answered|Skipped", Answer_Choices)) %>%
-    mutate(Question = question_text) %>%
-    separate(Percentage, into = c("Percentage", "Count"), sep = "\\s", convert = TRUE) %>%
-    mutate(Percentage = as.numeric(gsub("%", "", Percentage)))
-  
-  return(responses)
-}
-
-# Apply the function to each question block
-tidy_data <- map2_dfr(
-  question_indices, 
-  c(question_indices[-1] - 1, nrow(data)), 
-  ~ process_question_block(.x, .y, data)
-)
-
-# View the tidy data
-print(tidy_data)
-
-
-```
-
