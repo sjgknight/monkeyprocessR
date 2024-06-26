@@ -32,9 +32,10 @@ ui <- fluidPage(
       hr(),
       textInput("main_title", "Main Title", value = "Your title here"),
       numericInput("cex", "Text Size (cex)", value = 0.4, min = 0.1, max = 2, step = 0.1),
-      textInput("col", "Color", value = "purple"),
+      textInput("col", "Color of footnote", value = "purple"),
       actionButton("plot", "Generate Plot"),
       hr(),
+      radioButtons("plot_format", "Select plot format", choices = c("png")),
       downloadButton("download_plot", "Download Plot")
     ),
     mainPanel(
@@ -105,7 +106,8 @@ server <- function(input, output, session) {
     }
   )
 
-  output$likert_plot <- renderPlot({
+
+  data_plot <- eventReactive(input$plot, {
     req(processed_data())
     data_sum <- processed_data()$likert_combined
     n_sizes <- get_n_sizes(data_sum)
@@ -128,70 +130,46 @@ server <- function(input, output, session) {
     data_sum <- data_sum %>%
       mutate(Item = factor(Item, levels = c(Item)))
 
-    HH::likertplot(data_sum[2:6],
-                   horizontal = TRUE,
-                   main = input$main_title,
-                   sub = list(paste0(n_sizes),
-                              cex = input$cex,
-                              col = input$col),
-                   xlab = list("%", cex = input$cex),
-                   par.strip.text = list(cex = input$cex, lines = 5, rotate = 30),
-                   auto.key = list(space = "right", columns = 1, cex = input$cex),
-                   strip = FALSE,
-                   add.text = TRUE,
-                   xlim = c(-100, 100),
-                   scales = list(x = list(rot = 45, cex = input$cex, at = seq(-90, 90, 10)),
-                                 y = list(cex = input$cex, labels = rev(data_sum$Item))))
+    data_plot <- HH::likertplot(data_sum[2:6],
+                                horizontal = TRUE,
+                                main = input$main_title,
+                                sub = list(paste0(n_sizes),
+                                           cex = input$cex,
+                                           col = input$col),
+                                xlab = list("%", cex = input$cex),
+                                par.strip.text = list(cex = input$cex, lines = 5, rotate = 30),
+                                auto.key = list(space = "right", columns = 1, cex = input$cex),
+                                strip = FALSE,
+                                add.text = TRUE,
+                                xlim = c(-100, 100),
+                                scales = list(x = list(rot = 45, cex = input$cex, at = seq(-90, 90, 10)),
+                                              y = list(cex = input$cex, labels = rev(data_sum$Item))))
+
+    data_plot
+  }
+)
+
+  output$likert_plot <- renderPlot({
+    data_plot()
   })
 
+
+  output$plotformat <- renderUI({
+    radioboxGroupInput("plot_format",
+                       "Select plot format",
+                       choices = c("png"))
+  })
 
 
   output$download_plot <- downloadHandler(
     filename = function() { paste0("likert_plot.", input$plot_format) },
     content = function(file) {
-      req(processed_data())
-      data_sum <- processed_data()$likert_combined %>%
-        rename(Item = question) %>%
-        dplyr::select(Item:responses_strongly_agree) %>%
-        mutate(across(c(-Item), ~as.numeric(.x) * 100)) %>%
-        rename("Strongly Disagree" = responses_strongly_disagree,
-               "Disagree" = responses_disagree,
-               "Neither agree nor disagree" = responses_neither_agree_nor_disagree,
-               "Agree" = responses_agree,
-               "Strongly Agree" = responses_strongly_agree)
-
-      data_sum <- data_sum %>%
-        rowwise() %>%
-        mutate(Item_orig = Item,
-               Item = stringr::str_wrap(Item_orig, width = 50))
-
-      data_sum <- data_sum %>%
-        mutate(Item = factor(Item, levels = c(Item)))
-
-      g <- HH::likertplot(data_sum[2:6],
-                          horizontal = TRUE,
-                          main = input$main_title,
-                          sub = list(paste0(get_n_sizes(data_sum)),
-                                     cex = input$cex,
-                                     col = input$col),
-                          xlab = list("%", cex = input$cex),
-                          par.strip.text = list(cex = input$cex, lines = 5, rotate = 30),
-                          auto.key = list(space = "right", columns = 1, cex = input$cex),
-                          strip = FALSE,
-                          add.text = TRUE,
-                          xlim = c(-100, 100),
-                          scales = list(x = list(rot = 45, cex = input$cex, at = seq(-90, 90, 10)),
-                                        y = list(cex = input$cex, labels = rev(data_sum$Item))))
-
-      if (input$plot_format == "png") {
-        png(file)
-        print(g)
-        dev.off()
-      } else if (input$plot_format == "svg") {
-        svg(file)
-        print(g)
-        dev.off()
-      }
+      #HH::hhpng(data_plot(), target = file)
+      png(file)
+      print(data_plot())
+      dev.off()
+      #png::writePNG(data_plot(), target = file)
+      #ggplot2::ggsave(file, plot = data_plot(), dpi = 300,device="png")
     }
   )
 }
