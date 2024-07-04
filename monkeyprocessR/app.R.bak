@@ -16,7 +16,7 @@ library(purrr)
 library(janitor)
 library(HH)
 
-source('tidysheets.R')
+source('../tidysheets.R')
 
 # Define UI
 ui <- fluidPage(
