@@ -1,5 +1,12 @@
+##########################################################################
+##########################################################################
+### Functions to read in a sheet and split it into tables
+##########################################################################
+##########################################################################
 # functions from https://github.com/yusuzech/tidyverse_notes/blob/master/utility/read_excel_tables.md
 # which answers q at https://stackoverflow.com/questions/58251748/how-to-efficiently-import-multiple-excel-tables-located-in-one-sheet-into-an-r-l
+# surveymonkey output is a fairly simple case thankfully so only uses split_df function which splits a df into tables
+# other functions can be manually used to facilitate that process (not built into the shiny app)
 
 # utility function to get rle as a named vector
 vec_rle <- function(v){
@@ -150,7 +157,7 @@ display_table_shape <- function(df){
 ########################################################
 ########################################################
 ########################################################
-# Thanks chatGPT. Processing the extracted tables.
+# Functions to process extracted tables (thanks to chatGPT, with edits and testing)
 ########################################################
 ########################################################
 ########################################################
@@ -189,7 +196,7 @@ extract_tables <- function(df_list = split_table){
 ########################################################
 ########################################################
 ########################################################
-# Converting each to a wide fromat
+# Converting tables to a wide format
 ########################################################
 ########################################################
 ########################################################
@@ -234,8 +241,8 @@ likert_that <- function(likert_qs, likert_name){
   response_data
 }
 
-
-#q unfortunately is also the base quit function so we'll backtick enclose it
+# Get the sample size for each question for returning in footnote
+#q unfortunately is also the base quit function so we'll ~~backtick enclose it~~ rename it (backticks didnt work)
 get_n_sizes <- function(likert_combined){
   likert_combined %>%
   # Extract the unique question labels
