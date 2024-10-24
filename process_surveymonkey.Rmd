@@ -75,7 +75,7 @@ data_sum <- data_sum %>%
 
 x <- HH::likertplot(data_sum[2:6], 
                horizontal=TRUE,
-               main="NTEU member feedback",
+               main="a title here",
                sub= list(paste0(n_sizes),
                          cex = .4,
                          col = "blue"),
